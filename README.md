@@ -1,6 +1,6 @@
 # Loyalty Competitor Analysis Service
 
-This FastAPI service generates competitor analysis for loyalty programs using OpenAI's GPT models.
+This FastAPI service generates competitor analysis for loyalty programs using OpenAI's GPT-4 model.
 
 ## Setup
 
@@ -51,7 +51,7 @@ Example request:
   "previous_data": {},
   "current_prompt_data": {
     "existing_generated_output": "Previous analysis...",
-    "user_feedback": "Focus more on digital aspects"
+    "user_feedback": "Focus more on digital loyalty features"
   },
   "other_input_data": {}
 }
@@ -60,30 +60,43 @@ Example request:
 Example response:
 ```json
 {
-  "generated_output": "Competitive analysis for Example Corp...",
+  "generated_output": "Competitive Analysis for Example Corp...\n\n1. Market Position...\n2. Key Competitors...\n3. Loyalty Program Comparison...",
   "structured_data": {
     "top_competitors": [
       {
         "name": "Competitor A",
-        "strengths": ["Strong brand recognition", "Large customer base"],
-        "weaknesses": ["Limited digital presence", "Outdated loyalty program"],
-        "loyalty_program_features": ["Points system", "Tier-based rewards"]
+        "strengths": [
+          "Strong brand recognition",
+          "Large customer base"
+        ],
+        "weaknesses": [
+          "Limited digital presence",
+          "Outdated loyalty program"
+        ],
+        "loyalty_program_features": [
+          "Points system",
+          "Tier-based rewards"
+        ]
       }
     ]
   }
 }
 ```
 
-## Development
+## Key Features
 
-- The service uses FastAPI for the API framework
-- OpenAI's GPT models for generating competitor analysis
-- Pydantic for data validation
+- Uses OpenAI's GPT-4 model for analysis
+- Provides both narrative analysis and structured competitor data
+- Supports user feedback for refining analysis
+- Input validation using Pydantic
+- Error handling and API monitoring
 
 ## Environment Variables
 
 - `OPENAI_API_KEY`: Your OpenAI API key (required)
 
-## Note
+## Notes
 
-This is a basic implementation. The OpenAI API call is currently mocked. To use real OpenAI API calls, uncomment and modify the relevant code in the `generate_competitor_analysis` function.
+- The service uses GPT-4 by default. You can modify the `model` parameter in `generate_competitor_analysis()` to use a different model.
+- The response includes both a detailed text analysis and structured JSON data about competitors.
+- The system prompt is designed to provide consistent, structured analysis focusing on loyalty programs.
