@@ -14,14 +14,20 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Loyalty Competitor Analysis Service")
 
-# Add CORS middleware with ALL origins allowed for testing
+# Add CORS middleware with specific patterns for Vercel deployments
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
-    expose_headers=["*"],
+    allow_origins=[
+        "https://loyalty-frontend-alpha.vercel.app",  # Production URL
+        "http://localhost:5173",  # Local development
+        "http://localhost:3000"   # Alternative local port
+    ],
+    allow_origin_regex=r"https://loyalty-frontend-alpha-[a-z0-9\-]+\.vercel\.app",  # Preview deployments
+    allow_credentials=False,  # Set to False since we don't need credentials
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
+    expose_headers=["Content-Length"],
+    max_age=3600  # Cache preflight requests for 1 hour
 )
 
 # Add logging middleware
@@ -29,6 +35,7 @@ app.add_middleware(
 async def log_requests(request: Request, call_next):
     logger.info(f"Incoming request: {request.method} {request.url}")
     logger.info(f"Headers: {request.headers}")
+    logger.info(f"Origin: {request.headers.get('origin', 'No origin header')}")
     
     # Log the request body for debugging
     body = await request.body()
@@ -48,11 +55,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": str(exc)}
     )
-
-# Options endpoint to handle preflight requests
-@app.options("/generate")
-async def options_route():
-    return {}
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
