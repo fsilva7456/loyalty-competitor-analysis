@@ -1,26 +1,58 @@
 import os
 from typing import Dict, List, Optional
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from openai import OpenAI
 import json
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Loyalty Competitor Analysis Service")
 
-# Add CORS middleware
+# Add CORS middleware with ALL origins allowed for testing
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:3000",
-        "https://loyalty-frontend-alpha.vercel.app",
-        "https://loyalty-frontend-alpha-ic4ys8dz8-fsilva7456s-projects.vercel.app"
-    ],
+    allow_origins=["*"],  # Allows all origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+    expose_headers=["*"],
 )
+
+# Add logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Incoming request: {request.method} {request.url}")
+    logger.info(f"Headers: {request.headers}")
+    
+    # Log the request body for debugging
+    body = await request.body()
+    if body:
+        logger.info(f"Request body: {body.decode()}")
+    
+    response = await call_next(request)
+    
+    logger.info(f"Response status: {response.status_code}")
+    return response
+
+# Error handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Error processing request: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)}
+    )
+
+# Options endpoint to handle preflight requests
+@app.options("/generate")
+async def options_route():
+    return {}
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -91,6 +123,7 @@ def extract_json_from_text(text: str) -> dict:
         json_str = text[text.find(start_marker) + len(start_marker):text.find(end_marker)].strip()
         return json.loads(json_str)
     except Exception as e:
+        logger.error(f"Error extracting JSON: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to parse structured data from response: {str(e)}"
@@ -122,10 +155,13 @@ def generate_competitor_analysis(
         
         return analysis, structured_data
     except Exception as e:
+        logger.error(f"Error generating analysis: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/generate", response_model=CompetitorAnalysisResponse)
 async def generate_analysis(request: CompetitorAnalysisRequest):
+    logger.info(f"Received analysis request for company: {request.company_name}")
+    
     # Extract user feedback if available
     feedback = request.current_prompt_data.user_feedback if request.current_prompt_data else ""
     
@@ -136,10 +172,13 @@ async def generate_analysis(request: CompetitorAnalysisRequest):
     )
     
     # Prepare response
-    return CompetitorAnalysisResponse(
+    response = CompetitorAnalysisResponse(
         generated_output=generated_text,
         structured_data=structured_data
     )
+    
+    logger.info("Successfully generated analysis")
+    return response
 
 if __name__ == "__main__":
     import uvicorn
