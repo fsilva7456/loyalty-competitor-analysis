@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Loyalty Competitor Analysis Service")
 
-# Add CORS middleware with specific patterns for Vercel deployments
+# Add CORS middleware with Vercel domains
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -25,7 +25,7 @@ app.add_middleware(
     allow_origin_regex=r"https://loyalty-frontend-alpha-[a-z0-9\-]+\.vercel\.app",  # Preview deployments
     allow_credentials=False,  # Set to False since we don't need credentials
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "Accept"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "Origin"],
     expose_headers=["Content-Length"],
     max_age=3600  # Cache preflight requests for 1 hour
 )
@@ -159,6 +159,10 @@ def generate_competitor_analysis(
     except Exception as e:
         logger.error(f"Error generating analysis: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.options("/generate")
+async def options_generate():
+    return {}
 
 @app.post("/generate", response_model=CompetitorAnalysisResponse)
 async def generate_analysis(request: CompetitorAnalysisRequest):
